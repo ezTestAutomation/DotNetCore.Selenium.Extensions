@@ -16,14 +16,14 @@
 		const string Msg_Element_Not_Visible = "The element '{0}' not visiable.";
 
 		#endregion
+
+		#region Internal method
 		private static string CustomMessage(string custom1, string custom2)
 		{
 			if (custom1 == Msg_Default)
 				return custom2;
 			return custom1;
 		}
-
-		#region Private method
 
 		private static IWebElement Find(IWebDriver webDriver, By by, int timeout = -1, bool scroll = false)
 		{
@@ -58,11 +58,60 @@
 
 		#endregion
 
+		#region Javascript & action
+
 		public static object ExecuteJavaScript(this IWebDriver webDriver, string javaScriptCommand)
 		{
 			return ((IJavaScriptExecutor)webDriver).ExecuteScript(javaScriptCommand);
 		}
 
+		public static void ScrollElementToView(this IWebDriver webDriver, string locator)
+		{
+			var webElement = Find(webDriver, ByExtensions.ByLocator(locator));
+			Actions actions = new Actions(webDriver);
+			actions.MoveToElement(webElement);
+			actions.Perform();
+		}
+
+		public static bool ScrollElementToView(this IWebDriver webDriver, By by)
+		{
+			var webElement = Find(webDriver, by);
+			Actions actions = new Actions(webDriver);
+			actions.MoveToElement(webElement);
+			actions.Perform();
+			return true;
+		}
+
+		public static int CountElement(this IWebDriver webDriver, string locator, int timeout = -1, bool scroll = false)
+		{
+			try
+			{
+				var webElement = Find(webDriver, ByExtensions.ByLocator(locator), timeout, scroll);
+				var element = webDriver.FindElements(ByExtensions.ByLocator(locator));
+				return element.Count;
+			}
+			catch (NoSuchElementException)
+			{
+				return 0;
+			}
+		}
+
+		public static int CountElement(this IWebDriver webDriver, By locator)
+		{
+			try
+			{
+				var element = webDriver.FindElements(locator);
+				return element.Count;
+			}
+			catch (NoSuchElementException)
+			{
+				return 0;
+			}
+		}
+
+		#endregion
+
+		#region Verify
 		public static string ElementShouldContains(this IWebDriver webDriver, string locator, string expectedValue, string message = Msg_Default, int timeout = -1, bool scroll = false)
 		{
 			try
@@ -92,6 +141,10 @@
 				return CustomMessage(message, string.Format(Msg_Element_Not_Exist_Or_Invisible, by));
 			}
 		}
+
+		#endregion
+
+		#region Get text
 
 		public static string GetText(this IWebDriver webDriver, By by, int timeout = -1, bool scroll = false)
 		{
@@ -135,22 +188,25 @@
 			}
 		}
 
-		public static void ScrollElementToView(this IWebDriver webDriver, string locator)
+		public static string GetDataInCell(this IWebDriver webDriver, string tableLocator, int rowIndex, string columnName, int timeout = -1, bool scroll = false)
 		{
-			var webElement = Find(webDriver, ByExtensions.ByLocator(locator));
-			Actions actions = new Actions(webDriver);
-			actions.MoveToElement(webElement);
-			actions.Perform();
+			try
+			{
+				var webElement = Find(webDriver, ByExtensions.ByLocator(tableLocator), timeout, scroll);
+				var columnIndex = webElement.FindElements(By.TagName("th")).ToList().FindIndex(f => f.Text == columnName);
+				var row = webElement.FindElements(By.TagName("tr")).Skip(rowIndex).Take(1).FirstOrDefault();
+				var cell = row.FindElements(By.TagName("td"))[columnIndex];
+				return cell.Text;
+			}
+			catch (NoSuchElementException)
+			{
+				return CustomMessage("", string.Format(Msg_Element_Not_Exist_Or_Invisible, tableLocator));
+			}
 		}
 
-		public static bool ScrollElementToView(this IWebDriver webDriver, By by)
-		{
-			var webElement = Find(webDriver, by);
-			Actions actions = new Actions(webDriver);
-			actions.MoveToElement(webElement);
-			actions.Perform();
-			return true;
-		}
+		#endregion
+
+		#region Enabled / Visisble
 
 		public static string IsElementEnabled(this IWebDriver webDriver, By by, string message = Msg_Default, int timeout = -1, bool scroll = false)
 		{
@@ -184,31 +240,37 @@
 			}
 		}
 
-		public static int CountElement(this IWebDriver webDriver, string locator, int timeout = -1, bool scroll = false)
+		#endregion
+
+		#region Drap and drop
+
+		public static void DragAndDropElement(this IWebDriver webDriver, string locator, string target)
 		{
-			try
-			{
-				var webElement = Find(webDriver, ByExtensions.ByLocator(locator), timeout, scroll);
-				var element = webDriver.FindElements(ByExtensions.ByLocator(locator));
-				return element.Count;
-			}
-			catch (NoSuchElementException)
-			{
-				return 0;
-			}
+			Actions ac = new Actions(webDriver);
+			var locatorElement = webDriver.FindElement(ByExtensions.ByLocator(locator));
+			var targetElement = webDriver.FindElement(ByExtensions.ByLocator(target));
+			ac.DragAndDrop(locatorElement, targetElement).Build().Perform();
 		}
 
-		public static int CountElement(this IWebDriver webDriver, By locator)
+		public static void DragAndDropElement(this IWebDriver webDriver, By locator, By target)
 		{
-			try
-			{
-				var element = webDriver.FindElements(locator);
-				return element.Count;
-			}
-			catch (NoSuchElementException)
-			{
-				return 0;
-			}
+			Actions ac = new Actions(webDriver);
+			ac.DragAndDrop(webDriver.FindElement(locator), webDriver.FindElement(target)).Build().Perform();
 		}
+
+		public static void DragAndDropElementByOffSet(this IWebDriver webDriver, string locator, int x, int y)
+		{
+			Actions ac = new Actions(webDriver);
+			var locatorElement = webDriver.FindElement(ByExtensions.ByLocator(locator));
+			ac.DragAndDropToOffset(locatorElement, x, y).Build().Perform();
+		}
+
+		public static void DragAndDropElementByOffSet(this IWebDriver webDriver, By locator, int x, int y)
+		{
+			Actions ac = new Actions(webDriver);
+			ac.DragAndDropToOffset(webDriver.FindElement(locator), x, y).Build().Perform();
+		}
+
+		#endregion
 	}
 }
